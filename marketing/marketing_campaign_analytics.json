@@ -1,0 +1,430 @@
+{
+  "name": "Marketing Campaign Analytics",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "53fd35b2-11ca-4981-b96c-bd3a8ab34497",
+      "name": "Weekly Report Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        100
+      ],
+      "notes": "Triggers every Monday at 9 AM"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "0692e988-7243-4aad-ade3-d49233c41c05",
+      "name": "Set Date Range",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/analytics/v3/data/ga?ids=ga:YOUR_VIEW_ID&start-date={{ $('Set Date Range').item.json.weekStart }}&end-date={{ $('Set Date Range').item.json.weekEnd }}&metrics=ga:sessions,ga:users,ga:pageviews,ga:bounceRate,ga:avgSessionDuration&dimensions=ga:campaign,ga:source,ga:medium&filters=ga:campaign!=(not set)",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleAnalyticsOAuth2",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GA_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0987e2c2-6474-4315-93d9-c84c975c6313",
+      "name": "Get Google Analytics Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        0
+      ],
+      "notes": "Fetches campaign data from Google Analytics"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/act_YOUR_AD_ACCOUNT_ID/insights?fields=campaign_name,impressions,clicks,ctr,cpm,cpp,spend,actions&time_range={'since':'{{ $('Set Date Range').item.json.weekStart }}','until':'{{ $('Set Date Range').item.json.weekEnd }}'}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_FB_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "919e90e2-eb11-4968-b1f2-c72c2c4a3f63",
+      "name": "Get Facebook Ads Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        180
+      ],
+      "notes": "Fetches Facebook Ads campaign performance"
+    },
+    {
+      "parameters": {
+        "url": "=https://googleads.googleapis.com/v14/customers/YOUR_CUSTOMER_ID/googleAds:searchStream",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleAds",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GOOGLE_ADS_TOKEN"
+            },
+            {
+              "name": "developer-token",
+              "value": "YOUR_DEVELOPER_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "=SELECT campaign.name, metrics.impressions, metrics.clicks, metrics.ctr, metrics.cost_micros, metrics.conversions FROM campaign WHERE segments.date >= '{{ $('Set Date Range').item.json.weekStart }}' AND segments.date <= '{{ $('Set Date Range').item.json.weekEnd }}'"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ba0bac3c-9073-4bef-8c60-333c072e3fd0",
+      "name": "Get Google Ads Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        320
+      ],
+      "notes": "Fetches Google Ads campaign performance"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.twitter.com/2/tweets/search/recent?query=from:YOUR_TWITTER_HANDLE&start_time={{ $('Set Date Range').item.json.weekStart }}T00:00:00Z&end_time={{ $('Set Date Range').item.json.weekEnd }}T23:59:59Z&tweet.fields=public_metrics,created_at",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twitterOAuth2",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_TWITTER_BEARER_TOKEN"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "43a9d215-379e-4383-a8e4-17acfe8b6b02",
+      "name": "Get Twitter Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        540
+      ],
+      "notes": "Fetches Twitter engagement metrics"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Google Analytics Data\nconst gaData = $input.first().json;\nlet processedGA = [];\n\nif (gaData.rows) {\n  processedGA = gaData.rows.map(row => ({\n    platform: 'Google Analytics',\n    campaign: row[0],\n    source: row[1],\n    medium: row[2],\n    sessions: parseInt(row[3]),\n    users: parseInt(row[4]),\n    pageviews: parseInt(row[5]),\n    bounceRate: parseFloat(row[6]),\n    avgSessionDuration: parseFloat(row[7])\n  }));\n}\n\nreturn processedGA.map(item => ({ json: item }));"
+      },
+      "id": "3847e920-7158-44ce-a0a2-856f73b3f63e",
+      "name": "Process GA Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Facebook Ads Data\nconst fbData = $input.first().json;\nlet processedFB = [];\n\nif (fbData.data) {\n  processedFB = fbData.data.map(campaign => {\n    const conversions = campaign.actions ? \n      campaign.actions.find(action => action.action_type === 'purchase')?.value || 0 : 0;\n    \n    return {\n      platform: 'Facebook Ads',\n      campaign: campaign.campaign_name,\n      impressions: parseInt(campaign.impressions),\n      clicks: parseInt(campaign.clicks),\n      ctr: parseFloat(campaign.ctr),\n      spend: parseFloat(campaign.spend),\n      conversions: parseInt(conversions),\n      cpm: parseFloat(campaign.cpm),\n      cpp: parseFloat(campaign.cpp)\n    };\n  });\n}\n\nreturn processedFB.map(item => ({ json: item }));"
+      },
+      "id": "e435c45a-f1c1-4f02-838e-71bc10b6d793",
+      "name": "Process FB Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Google Ads Data\nconst gadsData = $input.first().json;\nlet processedGAds = [];\n\nif (gadsData.results) {\n  processedGAds = gadsData.results.map(result => ({\n    platform: 'Google Ads',\n    campaign: result.campaign.name,\n    impressions: parseInt(result.metrics.impressions),\n    clicks: parseInt(result.metrics.clicks),\n    ctr: parseFloat(result.metrics.ctr),\n    cost: parseFloat(result.metrics.cost_micros) / 1000000, // Convert micros to actual cost\n    conversions: parseInt(result.metrics.conversions)\n  }));\n}\n\nreturn processedGAds.map(item => ({ json: item }));"
+      },
+      "id": "66a30995-9ff6-4b1e-afec-e4b5c71b6cea",
+      "name": "Process Google Ads Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Twitter Data\nconst twitterData = $input.first().json;\nlet processedTwitter = [];\n\nif (twitterData.data) {\n  const totalEngagement = twitterData.data.reduce((sum, tweet) => {\n    const metrics = tweet.public_metrics;\n    return {\n      tweets: sum.tweets + 1,\n      likes: sum.likes + metrics.like_count,\n      retweets: sum.retweets + metrics.retweet_count,\n      replies: sum.replies + metrics.reply_count,\n      quotes: sum.quotes + metrics.quote_count\n    };\n  }, { tweets: 0, likes: 0, retweets: 0, replies: 0, quotes: 0 });\n  \n  processedTwitter = [{\n    platform: 'Twitter',\n    totalTweets: totalEngagement.tweets,\n    totalLikes: totalEngagement.likes,\n    totalRetweets: totalEngagement.retweets,\n    totalReplies: totalEngagement.replies,\n    totalQuotes: totalEngagement.quotes,\n    engagementRate: totalEngagement.tweets > 0 ? \n      ((totalEngagement.likes + totalEngagement.retweets + totalEngagement.replies) / totalEngagement.tweets).toFixed(2) : 0\n  }];\n}\n\nreturn processedTwitter.map(item => ({ json: item }));"
+      },
+      "id": "8019af5c-a921-44c6-8883-c1ca2ae5ced6",
+      "name": "Process Twitter Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByIndex",
+        "options": {}
+      },
+      "id": "cb0ef48d-bbfd-4a7f-8e30-bf1ac0bc2f30",
+      "name": "Merge All Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        400,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate comprehensive marketing report\nconst allData = $input.all();\nconst reportDate = $('Set Date Range').item.json.reportDate;\nconst weekStart = $('Set Date Range').item.json.weekStart;\nconst weekEnd = $('Set Date Range').item.json.weekEnd;\n\nlet gaData = [], fbData = [], gadsData = [], twitterData = [];\n\n// Separate data by platform\nallData.forEach(input => {\n  input.forEach(item => {\n    const data = item.json;\n    switch(data.platform) {\n      case 'Google Analytics':\n        gaData.push(data);\n        break;\n      case 'Facebook Ads':\n        fbData.push(data);\n        break;\n      case 'Google Ads':\n        gadsData.push(data);\n        break;\n      case 'Twitter':\n        twitterData.push(data);\n        break;\n    }\n  });\n});\n\n// Calculate totals\nconst totalSpend = [...fbData, ...gadsData].reduce((sum, item) => sum + (item.spend || item.cost || 0), 0);\nconst totalClicks = [...fbData, ...gadsData].reduce((sum, item) => sum + (item.clicks || 0), 0);\nconst totalImpressions = [...fbData, ...gadsData].reduce((sum, item) => sum + (item.impressions || 0), 0);\nconst totalConversions = [...fbData, ...gadsData].reduce((sum, item) => sum + (item.conversions || 0), 0);\nconst totalSessions = gaData.reduce((sum, item) => sum + (item.sessions || 0), 0);\n\n// Generate report\nconst report = {\n  reportGeneratedAt: new Date().toISOString(),\n  reportPeriod: `${weekStart} to ${weekEnd}`,\n  \n  summary: {\n    totalAdSpend: totalSpend.toFixed(2),\n    totalClicks: totalClicks,\n    totalImpressions: totalImpressions,\n    totalConversions: totalConversions,\n    totalSessions: totalSessions,\n    overallCTR: totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) + '%' : '0%',\n    costPerConversion: totalConversions > 0 ? (totalSpend / totalConversions).toFixed(2) : 'N/A',\n    conversionRate: totalClicks > 0 ? ((totalConversions / totalClicks) * 100).toFixed(2) + '%' : '0%'\n  },\n  \n  platformBreakdown: {\n    googleAnalytics: {\n      totalSessions: totalSessions,\n      totalUsers: gaData.reduce((sum, item) => sum + (item.users || 0), 0),\n      totalPageviews: gaData.reduce((sum, item) => sum + (item.pageviews || 0), 0),\n      avgBounceRate: gaData.length > 0 ? (gaData.reduce((sum, item) => sum + (item.bounceRate || 0), 0) / gaData.length).toFixed(2) + '%' : '0%',\n      campaigns: gaData\n    },\n    \n    facebookAds: {\n      totalSpend: fbData.reduce((sum, item) => sum + (item.spend || 0), 0).toFixed(2),\n      totalClicks: fbData.reduce((sum, item) => sum + (item.clicks || 0), 0),\n      totalImpressions: fbData.reduce((sum, item) => sum + (item.impressions || 0), 0),\n      totalConversions: fbData.reduce((sum, item) => sum + (item.conversions || 0), 0),\n      campaigns: fbData\n    },\n    \n    googleAds: {\n      totalCost: gadsData.reduce((sum, item) => sum + (item.cost || 0), 0).toFixed(2),\n      totalClicks: gadsData.reduce((sum, item) => sum + (item.clicks || 0), 0),\n      totalImpressions: gadsData.reduce((sum, item) => sum + (item.impressions || 0), 0),\n      totalConversions: gadsData.reduce((sum, item) => sum + (item.conversions || 0), 0),\n      campaigns: gadsData\n    },\n    \n    twitter: twitterData.length > 0 ? twitterData[0] : { message: 'No Twitter data available' }\n  },\n  \n  topPerformingCampaigns: {\n    byConversions: [...fbData, ...gadsData]\n      .filter(item => item.conversions > 0)\n      .sort((a, b) => b.conversions - a.conversions)\n      .slice(0, 5),\n    \n    byROAS: [...fbData, ...gadsData]\n      .filter(item => item.conversions > 0 && (item.spend || item.cost) > 0)\n      .map(item => ({\n        ...item,\n        roas: (item.conversions * 50) / (item.spend || item.cost) // Assuming $50 average order value\n      }))\n      .sort((a, b) => b.roas - a.roas)\n      .slice(0, 5)\n  }\n};\n\nreturn [{ json: report }];"
+      },
+      "id": "b8858015-9ab2-4b1e-b21d-204a75700e7f",
+      "name": "Generate Marketing Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create"
+      },
+      "id": "09b6ae54-eb30-47d3-8992-078186d63fef",
+      "name": "Save Report to Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        800,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "reports@yourcompany.com",
+        "toEmail": "marketing-team@yourcompany.com,management@yourcompany.com",
+        "subject": "=Weekly Marketing Performance Report - {{ $('Set Date Range').item.json.weekStart }} to {{ $('Set Date Range').item.json.weekEnd }}",
+        "options": {}
+      },
+      "id": "443e1f81-993d-40a9-8245-a76c41bef72f",
+      "name": "Email Marketing Report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        800,
+        260
+      ],
+      "webhookId": "ae3ea4e9-f062-47df-bde6-bea93ecb213f"
+    },
+    {
+      "parameters": {
+        "text": "=📊 **Weekly Marketing Report Generated**\n\n**Period:** {{ $('Set Date Range').item.json.weekStart }} to {{ $('Set Date Range').item.json.weekEnd }}\n\n**Quick Stats:**\n💰 Total Spend: ${{ $('Generate Marketing Report').item.json.summary.totalAdSpend }}\n🎯 Conversions: {{ $('Generate Marketing Report').item.json.summary.totalConversions }}\n📈 CTR: {{ $('Generate Marketing Report').item.json.summary.overallCTR }}\n💡 Conversion Rate: {{ $('Generate Marketing Report').item.json.summary.conversionRate }}\n\nFull report has been emailed to the marketing team and saved to Google Drive. 📁",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "1836fd8b-3fb0-49ad-829c-ab311a3ec076",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        800,
+        500
+      ],
+      "webhookId": "2e5a3414-f7dd-48e1-9ddd-3fdadd020c9a"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Weekly Report Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Date Range",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date Range": {
+      "main": [
+        [
+          {
+            "node": "Get Google Analytics Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Facebook Ads Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Google Ads Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Twitter Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Google Analytics Data": {
+      "main": [
+        [
+          {
+            "node": "Process GA Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Facebook Ads Data": {
+      "main": [
+        [
+          {
+            "node": "Process FB Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Google Ads Data": {
+      "main": [
+        [
+          {
+            "node": "Process Google Ads Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Twitter Analytics": {
+      "main": [
+        [
+          {
+            "node": "Process Twitter Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process GA Data": {
+      "main": [
+        [
+          {
+            "node": "Merge All Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process FB Data": {
+      "main": [
+        [
+          {
+            "node": "Merge All Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge All Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Marketing Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Marketing Report": {
+      "main": [
+        [
+          {
+            "node": "Save Report to Google Drive",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email Marketing Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c18d0cab-6361-4bbe-b7f1-6c619d2c69c7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4682ad397f343033a8e1099fe3b56ffb9ab4d256bc3d093ff3f8d83993405c6d"
+  },
+  "id": "B6izMJoNRd0C7Vb6",
+  "tags": [
+    {
+      "createdAt": "2025-06-16T07:05:25.144Z",
+      "updatedAt": "2025-06-16T07:05:25.144Z",
+      "id": "lmJv0iSZDw1IvObU",
+      "name": "works"
+    }
+  ]
+}
