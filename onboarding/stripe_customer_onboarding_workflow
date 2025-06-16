@@ -1,0 +1,629 @@
+{
+  "meta": {
+    "instanceId": "stripe-onboarding-001"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stripe-customer-created",
+        "options": {
+          "noResponseBody": false
+        }
+      },
+      "id": "stripe-webhook-001",
+      "name": "Stripe Customer Created Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 400],
+      "webhookId": "stripe-customer-webhook-001",
+      "notes": "Receives customer.created events from Stripe"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "customerId",
+              "value": "={{ $json.body.data.object.id }}"
+            },
+            {
+              "name": "customerEmail",
+              "value": "={{ $json.body.data.object.email }}"
+            },
+            {
+              "name": "customerName",
+              "value": "={{ $json.body.data.object.name || $json.body.data.object.email.split('@')[0] }}"
+            },
+            {
+              "name": "customerPhone",
+              "value": "={{ $json.body.data.object.phone || '' }}"
+            },
+            {
+              "name": "createdAt",
+              "value": "={{ new Date($json.body.data.object.created * 1000).toISOString() }}"
+            },
+            {
+              "name": "subscriptionId",
+              "value": "={{ $json.body.data.object.subscriptions?.data[0]?.id || '' }}"
+            },
+            {
+              "name": "planId",
+              "value": "={{ $json.body.data.object.subscriptions?.data[0]?.items?.data[0]?.price?.id || '' }}"
+            },
+            {
+              "name": "planName",
+              "value": "={{ $json.body.data.object.subscriptions?.data[0]?.items?.data[0]?.price?.nickname || 'Basic Plan' }}"
+            }
+          ]
+        }
+      },
+      "id": "extract-customer-data-001",
+      "name": "Extract Customer Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [400, 400],
+      "notes": "Extracts and formats customer data from Stripe webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_HUBSPOT_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "properties",
+              "value": "={{ {\n  \"email\": $('Extract Customer Data').item.json.customerEmail,\n  \"firstname\": $('Extract Customer Data').item.json.customerName.split(' ')[0],\n  \"lastname\": $('Extract Customer Data').item.json.customerName.split(' ').slice(1).join(' ') || 'Unknown',\n  \"phone\": $('Extract Customer Data').item.json.customerPhone,\n  \"stripe_customer_id\": $('Extract Customer Data').item.json.customerId,\n  \"subscription_plan\": $('Extract Customer Data').item.json.planName,\n  \"customer_created_date\": $('Extract Customer Data').item.json.createdAt,\n  \"lifecyclestage\": \"customer\",\n  \"lead_source\": \"stripe_signup\"\n} }}"
+            }
+          ]
+        }
+      },
+      "id": "create-hubspot-contact-001",
+      "name": "Create HubSpot Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [600, 200],
+      "notes": "Creates contact in HubSpot CRM"
+    },
+    {
+      "parameters": {
+        "url": "https://YOUR_DOMAIN.zendesk.com/api/v2/users.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_ZENDESK_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user",
+              "value": "={{ {\n  \"name\": $('Extract Customer Data').item.json.customerName,\n  \"email\": $('Extract Customer Data').item.json.customerEmail,\n  \"phone\": $('Extract Customer Data').item.json.customerPhone,\n  \"role\": \"end-user\",\n  \"verified\": true,\n  \"external_id\": $('Extract Customer Data').item.json.customerId,\n  \"user_fields\": {\n    \"stripe_customer_id\": $('Extract Customer Data').item.json.customerId,\n    \"subscription_plan\": $('Extract Customer Data').item.json.planName,\n    \"signup_date\": $('Extract Customer Data').item.json.createdAt\n  }\n} }}"
+            }
+          ]
+        }
+      },
+      "id": "create-zendesk-user-001",
+      "name": "Create Zendesk User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [600, 300],
+      "notes": "Creates user in Zendesk support system"
+    },
+    {
+      "parameters": {
+        "url": "https://api.mixpanel.com/engage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "data",
+              "value": "={{ Buffer.from(JSON.stringify({\n  \"$token\": \"YOUR_MIXPANEL_TOKEN\",\n  \"$distinct_id\": $('Extract Customer Data').item.json.customerId,\n  \"$set\": {\n    \"$email\": $('Extract Customer Data').item.json.customerEmail,\n    \"$name\": $('Extract Customer Data').item.json.customerName,\n    \"$phone\": $('Extract Customer Data').item.json.customerPhone,\n    \"stripe_customer_id\": $('Extract Customer Data').item.json.customerId,\n    \"subscription_plan\": $('Extract Customer Data').item.json.planName,\n    \"signup_date\": $('Extract Customer Data').item.json.createdAt,\n    \"customer_segment\": \"new_customer\"\n  }\n})).toString('base64') }}"
+            }
+          ]
+        }
+      },
+      "id": "create-mixpanel-profile-001",
+      "name": "Create Mixpanel Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [600, 400],
+      "notes": "Creates user profile in Mixpanel analytics"
+    },
+    {
+      "parameters": {
+        "url": "https://api.amplitude.com/identify",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Api-Key YOUR_AMPLITUDE_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "identification",
+              "value": "={{ [{\n  \"user_id\": $('Extract Customer Data').item.json.customerId,\n  \"user_properties\": {\n    \"email\": $('Extract Customer Data').item.json.customerEmail,\n    \"name\": $('Extract Customer Data').item.json.customerName,\n    \"phone\": $('Extract Customer Data').item.json.customerPhone,\n    \"stripe_customer_id\": $('Extract Customer Data').item.json.customerId,\n    \"subscription_plan\": $('Extract Customer Data').item.json.planName,\n    \"signup_date\": $('Extract Customer Data').item.json.createdAt,\n    \"customer_segment\": \"new_customer\"\n  }\n}] }}"
+            }
+          ]
+        }
+      },
+      "id": "create-amplitude-profile-001",
+      "name": "Create Amplitude Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [600, 500],
+      "notes": "Creates user profile in Amplitude analytics"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByIndex",
+        "options": {}
+      },
+      "id": "merge-account-creation-001",
+      "name": "Merge Account Creation Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [800, 350]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $('Extract Customer Data').item.json.planName.toLowerCase() }}",
+              "rightValue": "premium",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "check-plan-type-001",
+      "name": "Check Plan Type",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1000, 350],
+      "notes": "Determines customer segment based on plan"
+    },
+    {
+      "parameters": {
+        "fromEmail": "welcome@yourcompany.com",
+        "toEmail": "={{ $('Extract Customer Data').item.json.customerEmail }}",
+        "subject": "🎉 Welcome to [Company Name] - Premium Customer!",
+        "message": "=Hi {{ $('Extract Customer Data').item.json.customerName }},\n\nWelcome to [Company Name]! We're thrilled to have you as a Premium customer.\n\n🚀 **Your Premium Benefits:**\n• Priority customer support\n• Advanced features access\n• Dedicated account manager\n• Exclusive premium content\n• Priority feature requests\n\n📋 **Getting Started:**\n1. Access your dashboard: https://app.yourcompany.com/dashboard\n2. Complete your profile setup\n3. Explore premium features\n4. Schedule a welcome call with your account manager\n\n🔗 **Useful Links:**\n• Knowledge Base: https://help.yourcompany.com\n• Community Forum: https://community.yourcompany.com\n• Premium Support: https://support.yourcompany.com/premium\n\n💬 **Need Help?**\nReach out to our premium support team at premium-support@yourcompany.com or call us at (555) 123-4567.\n\nYour Customer ID: {{ $('Extract Customer Data').item.json.customerId }}\n\nBest regards,\nThe [Company Name] Team\n\n---\nThis email was sent because you recently became a Premium customer. If you have questions, please contact our support team.",
+        "options": {
+          "attachments": [],
+          "replyTo": "support@yourcompany.com"
+        }
+      },
+      "id": "send-premium-welcome-001",
+      "name": "Send Premium Welcome Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1200, 250],
+      "credentials": {
+        "smtp": {
+          "id": "YOUR_SMTP_CREDENTIAL_ID",
+          "name": "Company SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "welcome@yourcompany.com",
+        "toEmail": "={{ $('Extract Customer Data').item.json.customerEmail }}",
+        "subject": "👋 Welcome to [Company Name]!",
+        "message": "=Hi {{ $('Extract Customer Data').item.json.customerName }},\n\nWelcome to [Company Name]! We're excited to have you on board.\n\n🎯 **What's Next:**\n• Access your dashboard: https://app.yourcompany.com/dashboard\n• Complete your profile setup\n• Explore our features\n• Check out our getting started guide\n\n📚 **Resources to Help You:**\n• Getting Started Guide: https://help.yourcompany.com/getting-started\n• Video Tutorials: https://help.yourcompany.com/videos\n• Community Forum: https://community.yourcompany.com\n• FAQ: https://help.yourcompany.com/faq\n\n💬 **Need Help?**\nOur support team is here to help! Contact us at support@yourcompany.com or visit our help center.\n\nYour Customer ID: {{ $('Extract Customer Data').item.json.customerId }}\n\nBest regards,\nThe [Company Name] Team\n\n---\nThis email was sent because you recently signed up for [Company Name]. If you have questions, please contact our support team.",
+        "options": {
+          "attachments": [],
+          "replyTo": "support@yourcompany.com"
+        }
+      },
+      "id": "send-standard-welcome-001",
+      "name": "Send Standard Welcome Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1200, 450],
+      "credentials": {
+        "smtp": {
+          "id": "YOUR_SMTP_CREDENTIAL_ID",
+          "name": "Company SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.yourapp.com/v1/users/provision",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_APP_API_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user",
+              "value": "={{ {\n  \"email\": $('Extract Customer Data').item.json.customerEmail,\n  \"name\": $('Extract Customer Data').item.json.customerName,\n  \"stripe_customer_id\": $('Extract Customer Data').item.json.customerId,\n  \"plan\": $('Extract Customer Data').item.json.planName,\n  \"features\": $('Extract Customer Data').item.json.planName.toLowerCase().includes('premium') ? \n    [\"advanced_analytics\", \"priority_support\", \"custom_integrations\", \"api_access\"] :\n    [\"basic_analytics\", \"standard_support\"],\n  \"role\": \"customer\",\n  \"active\": true\n} }}"
+            }
+          ]
+        }
+      },
+      "id": "provision-app-access-001",
+      "name": "Provision App Access",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1400, 200],
+      "notes": "Creates user account and provisions features in main application"
+    },
+    {
+      "parameters": {
+        "url": "https://api.mailchimp.com/3.0/lists/YOUR_LIST_ID/members",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mailchimpApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_MAILCHIMP_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "email_address",
+              "value": "={{ $('Extract Customer Data').item.json.customerEmail }}"
+            },
+            {
+              "name": "status",
+              "value": "subscribed"
+            },
+            {
+              "name": "merge_fields",
+              "value": "={{ {\n  \"FNAME\": $('Extract Customer Data').item.json.customerName.split(' ')[0],\n  \"LNAME\": $('Extract Customer Data').item.json.customerName.split(' ').slice(1).join(' ') || '',\n  \"PHONE\": $('Extract Customer Data').item.json.customerPhone,\n  \"CUST_ID\": $('Extract Customer Data').item.json.customerId,\n  \"PLAN\": $('Extract Customer Data').item.json.planName\n} }}"
+            },
+            {
+              "name": "tags",
+              "value": "={{ $('Extract Customer Data').item.json.planName.toLowerCase().includes('premium') ? \n  ['new_customer', 'premium_customer', 'onboarding'] :\n  ['new_customer', 'standard_customer', 'onboarding'] }}"
+            }
+          ]
+        }
+      },
+      "id": "add-to-mailchimp-001",
+      "name": "Add to Mailchimp Segments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1400, 350],
+      "notes": "Adds customer to appropriate marketing segments"
+    },
+    {
+      "parameters": {
+        "url": "https://api.hubapi.com/automation/v4/flows/YOUR_FLOW_ID/enrollments",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_HUBSPOT_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "enrollments",
+              "value": "={{ [{\n  \"email\": $('Extract Customer Data').item.json.customerEmail,\n  \"properties\": {\n    \"customer_tier\": $('Extract Customer Data').item.json.planName.toLowerCase().includes('premium') ? 'premium' : 'standard',\n    \"onboarding_date\": $('Extract Customer Data').item.json.createdAt\n  }\n}] }}"
+            }
+          ]
+        }
+      },
+      "id": "enroll-hubspot-workflow-001",
+      "name": "Enroll in HubSpot Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1400, 500],
+      "notes": "Enrolls customer in automated marketing workflows"
+    },
+    {
+      "parameters": {
+        "channel": "#customer-success",
+        "text": "=🎉 **New Customer Onboarded!**\n\n👤 **Customer:** {{ $('Extract Customer Data').item.json.customerName }}\n📧 **Email:** {{ $('Extract Customer Data').item.json.customerEmail }}\n💳 **Plan:** {{ $('Extract Customer Data').item.json.planName }}\n🆔 **Stripe ID:** {{ $('Extract Customer Data').item.json.customerId }}\n📅 **Signed Up:** {{ $('Extract Customer Data').item.json.createdAt }}\n\n✅ **Completed Actions:**\n• ✅ Created CRM contact\n• ✅ Set up support account\n• ✅ Configured analytics tracking\n• ✅ Sent welcome email\n• ✅ Provisioned app access\n• ✅ Added to marketing segments\n\n{{ $('Extract Customer Data').item.json.planName.toLowerCase().includes('premium') ? '🌟 **Premium Customer** - Consider scheduling a welcome call!' : '📞 **Standard Customer** - Monitor for engagement opportunities' }}",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "slack-notification-001",
+      "name": "Slack Customer Success Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1600, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Company Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "subject": "=Welcome Call Needed - {{ $('Extract Customer Data').item.json.customerName }}",
+        "assigneeId": "YOUR_PREMIUM_ACCOUNT_MANAGER_ID",
+        "body": "=**New Premium Customer Onboarded**\n\n**Customer Details:**\n• Name: {{ $('Extract Customer Data').item.json.customerName }}\n• Email: {{ $('Extract Customer Data').item.json.customerEmail }}\n• Phone: {{ $('Extract Customer Data').item.json.customerPhone }}\n• Plan: {{ $('Extract Customer Data').item.json.planName }}\n• Stripe ID: {{ $('Extract Customer Data').item.json.customerId }}\n• Signup Date: {{ $('Extract Customer Data').item.json.createdAt }}\n\n**Action Required:**\n• Schedule welcome call within 24 hours\n• Introduce premium features\n• Understand customer goals\n• Set up success metrics\n\n**Systems Setup:**\n• CRM contact created ✅\n• Support account ready ✅\n• App access provisioned ✅\n• Analytics tracking active ✅",
+        "priority": "high",
+        "tags": "premium-onboarding,welcome-call,new-customer"
+      },
+      "id": "create-premium-task-001",
+      "name": "Create Premium Onboarding Task",
+      "type": "n8n-nodes-base.todoist",
+      "typeVersion": 2,
+      "position": [1600, 200],
+      "credentials": {
+        "todoistApi": {
+          "id": "YOUR_TODOIST_CREDENTIAL_ID",
+          "name": "Company Todoist"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Stripe Customer Created Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Customer Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Customer Data": {
+      "main": [
+        [
+          {
+            "node": "Create HubSpot Contact",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Zendesk User",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Mixpanel Profile",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Amplitude Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create HubSpot Contact": {
+      "main": [
+        [
+          {
+            "node": "Merge Account Creation Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Zendesk User": {
+      "main": [
+        [
+          {
+            "node": "Merge Account Creation Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Create Mixpanel Profile": {
+      "main": [
+        [
+          {
+            "node": "Merge Account Creation Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Create Amplitude Profile": {
+      "main": [
+        [
+          {
+            "node": "Merge Account Creation Results",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Merge Account Creation Results": {
+      "main": [
+        [
+          {
+            "node": "Check Plan Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Plan Type": {
+      "main": [
+        [
+          {
+            "node": "Send Premium Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Standard Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Premium Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Provision App Access",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Add to Mailchimp Segments",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enroll in HubSpot Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Standard Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Provision App Access",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Add to Mailchimp Segments",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enroll in HubSpot Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Provision App Access": {
+      "main": [
+        [
+          {
+            "node": "Slack Customer Success Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Premium Onboarding Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Mailchimp Segments": {
+      "main": [
+        [
+          {
+            "node": "Slack Customer Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enroll in HubSpot Workflow": {
+      "main": [
+        [
+          {
+            "node": "Slack Customer Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "versionId": "stripe-onboarding-v1.0"
+}
