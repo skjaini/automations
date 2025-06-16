@@ -1,0 +1,1802 @@
+{
+  "name": "Sales Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "inputText": "={{ $json.snippet }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "Finances",
+              "description": "=These emails often relate to relate to invoices, payments, receipts, taxes, account balances, or financial reports. These typically come from accounting teams, vendors, or payment processors and may include attachments like invoices or payment confirmations. Keywords: invoice, payment, billing, refund, charge, receipt, statement, balance, tax, account payable"
+            },
+            {
+              "category": "Promotion",
+              "description": "These emails often are marketing-related, promotional offers, newsletters, discounts, or product announcements. These often come from mailing lists, marketing platforms, or sales teams and do not usually require immediate action. Keywords: sale, discount, offer, promotion, newsletter, deal, new product, limited time, exclusive, subscribe"
+            },
+            {
+              "category": "New Leads",
+              "description": "Emails requiring immediate attention or action, typically from key stake holders, clients, or decision makers. These emails often contain time sensitive requests, deadlines, or escalated issues. Keywords: urgent, ASAP, immediate, deadline, action required, high priority"
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "Please classify the text provided by the user into one of the following categories: {categories}, and use the provided formatting instructions below. Don't explain, and only output the json."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        1820
+      ],
+      "id": "1923f834-0ed5-418f-a142-048b4c759c70",
+      "name": "Text Classifier"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        2020
+      ],
+      "id": "1bb994bc-1697-404c-bdcf-b7423efaa71f",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_2153712281606784851"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1720,
+        1680
+      ],
+      "id": "54081b86-c010-4782-b377-34f035288e5f",
+      "name": "Promotion",
+      "webhookId": "e6cfc448-4921-48ef-bb65-c0dbc6c76ea9"
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_7937723162220600156"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1720,
+        1500
+      ],
+      "id": "25ab58c1-22d5-4c85-aa8d-ab4d8e3553fb",
+      "name": "Finances",
+      "webhookId": "e6cfc448-4921-48ef-bb65-c0dbc6c76ea9"
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_3986520172113512590"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1720,
+        1860
+      ],
+      "id": "bbf1604e-95e4-4263-9a53-89fd2fbf00ed",
+      "name": "Leads/High Priority",
+      "webhookId": "e6cfc448-4921-48ef-bb65-c0dbc6c76ea9"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are in charge of promotions. Please evaluate the incoming promotional email and give us a quick summary and a reccomendation.\n\nHere is the incoming message: {{ $('Gmail Trigger').item.json.text }}\n\nPlease output the following parameteres:\nSummary\nReccomendation"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1900,
+        1680
+      ],
+      "id": "f5dd3e55-9758-4c03-945f-de3b2f2bfdc6",
+      "name": "Summary"
+    },
+    {
+      "parameters": {
+        "chatId": "7713111664",
+        "text": "=Here are the details regarding a promotional email from {{ $('Gmail Trigger').item.json.to.value[0].name }}\n\nSummary:{{ $json.message.content.Summary }}\n\nReccomendation:{{ $json.message.content.Recommendation }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2260,
+        1680
+      ],
+      "id": "2a8b5349-148a-44ba-a3ee-23331faed597",
+      "name": "summary",
+      "webhookId": "c127c9b3-2de8-425b-8f4f-6478efe57145"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are in charge of finances. Please evaluate the incoming financial email and give us a quick summary and a reccomendation.\n\nHere is the incoming message: {{ $('Gmail Trigger').item.json.text }}\n\nPlease output the following parameteres:\nSummary\nReccomendation"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1900,
+        1500
+      ],
+      "id": "f2154f6f-2227-485f-b080-fdda5db124c8",
+      "name": "Summary1"
+    },
+    {
+      "parameters": {
+        "chatId": "7713111664",
+        "text": "=Here are the details regarding a financial email from {{ $('Switch').item.json.from.value[0].address }}\n\nSummary:{{ $json.message.content.Summary }}\n\nReccomendation:{{ $json.message.content.Recommendation }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2260,
+        1500
+      ],
+      "id": "c4eb0751-e91d-46ec-8cec-f7c106aa14b2",
+      "name": "summary1",
+      "webhookId": "c127c9b3-2de8-425b-8f4f-6478efe57145"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1180,
+        1820
+      ],
+      "id": "377cbaa1-ee77-4997-be22-814f9fb91e98",
+      "name": "Gmail1",
+      "webhookId": "0e076874-55d4-4794-a7bd-088ab72b6009"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1880,
+        2020
+      ],
+      "id": "91171473-1e74-4b98-82af-a4314056bef5",
+      "name": "OpenAI Chat Model1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=email body: {{ $('Text Classifier').item.json.snippet }}\nfrom email adress: {{ $('Gmail Trigger').item.json.from.value[0].address }}\nName:{{ $('Gmail Trigger').item.json.from.value[0].name }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You will receive an email body for a new lead\n\nI want you to extract the data points which should be name, email, and how we can help them.\n\nPlease output these datapoints in json as separate variables. output just the variables no explanation of summary\n\nIgnore the organiser details it should only be the guest"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        1880,
+        1860
+      ],
+      "id": "34a40a66-3f64-434b-8348-65d6caf8d417",
+      "name": "Add lead to CRM"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2360,
+        2040
+      ],
+      "id": "d80f0dfa-22db-4fbc-8a36-3719583b429a",
+      "name": "OpenAI Chat Model2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Linkedin Summary: {{ $json.results[0].content }}\n",
+        "options": {
+          "systemMessage": "You will receive a linkedIn summary\n\nYour job is to look at this data and create a summary of this lead and their company. Output just the summary please.\n\nKeep it at 100 words max"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        2360,
+        1860
+      ],
+      "id": "575e671f-45f4-4189-9a69-290194dd756f",
+      "name": "Lead summary Agent"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"{{ $('Add lead to CRM').item.json.output.Name }}'s linkedin Profile URL'\",\n  \"topic\": \"general\",\n  \"search_depth\": \"basic\",\n  \"max_results\": 1,\n  \"time_range\": null,\n  \"days\": 3,\n  \"include_answer\": true,\n  \"include_raw_content\": false,\n  \"include_images\": false,\n  \"include_image_descriptions\": false,\n  \"include_domains\": [],\n  \"exclude_domains\": []\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        1860
+      ],
+      "id": "580821da-3437-4f29-b561-511f416e6e9b",
+      "name": "Find Linkedin URL"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "apprymkZe4PtQJRMq",
+          "mode": "list",
+          "cachedResultName": "Leads/Clients",
+          "cachedResultUrl": "https://airtable.com/apprymkZe4PtQJRMq"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblQOIU9F5du7iwis",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/apprymkZe4PtQJRMq/tblQOIU9F5du7iwis"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('Add lead to CRM').item.json.output.Name }}",
+            "Email Address": "={{ $('Add lead to CRM').item.json.output.Email }}",
+            "Linkedin URL": "={{ $('Find Linkedin URL').item.json.results[0].url }}",
+            "Lead summary": "={{ $('Lead summary Agent').item.json.output }}",
+            "Notes": "={{ $('Add lead to CRM').item.json.output['how can we help you'] }}",
+            "Lead Status": "New Lead"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email Address",
+              "displayName": "Email Address",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Website URL",
+              "displayName": "Website URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Lead Status",
+              "displayName": "Lead Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Meeting Scheduled",
+                  "value": "Meeting Scheduled"
+                },
+                {
+                  "name": "New Lead",
+                  "value": "New Lead"
+                },
+                {
+                  "name": "Proposal Send",
+                  "value": "Proposal Send"
+                },
+                {
+                  "name": "Signed",
+                  "value": "Signed"
+                },
+                {
+                  "name": "Delivered",
+                  "value": "Delivered"
+                },
+                {
+                  "name": "Lost",
+                  "value": "Lost"
+                },
+                {
+                  "name": "Nurturing",
+                  "value": "Nurturing"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Linkedin URL",
+              "displayName": "Linkedin URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead summary",
+              "displayName": "Lead summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2220,
+        2160
+      ],
+      "id": "7661fa73-effa-4224-a31b-c119367741fb",
+      "name": "Airtable"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"Name\": \"test tester\",\n    \"Email\": \"example@gmail.com\",\n    \"Business name\": \"example\",\n    \"how can we help you\": \"test\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        2060,
+        2040
+      ],
+      "id": "72889338-a80c-4b32-bebf-0f4aa3446faf",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Email received: {{ $('Switch').item.json.text }}\nfrom: {{ $('Switch').item.json.from.value[0].address }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=##Role\n\nYou are a helpul email assistant that composes a draft for an email to respond to leads questions\n\n##Task\n\nYou will recieve the body of the email and who it is from as well as other information about the lead like a summary and notes. \n\nI want you to use your supplied supabase vector store knowledge base to try reply to the email. scan the knowledge base to see if your able to reply and if you are then give me a subject line and email body. you don't have to do this every time, only when you think its possible. Use this information alongside other information about the lead to compose a personalized email to respond to the email.\n\nAt the end of every email only sign it by saying:\n\"Thanks, Quiver7\"\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        2380,
+        2160
+      ],
+      "id": "c797f360-41db-4047-b0d3-52601ca025f7",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"Email subject line\": \"example\",\n\t\"email body\": \"example\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        2800,
+        2400
+      ],
+      "id": "ea27c717-f16b-44fb-8ed1-2bc156e5dac6",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "agencyknowledgebase",
+        "toolDescription": "Retrieve information about the companies frequently asked questions and other details about the agency like their services, testimonials, and contact information.",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.1,
+      "position": [
+        2500,
+        2400
+      ],
+      "id": "caadaff8-ad64-4d7b-81f4-69bd2c8a7187",
+      "name": "Supabase Vector Store"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2540,
+        2580
+      ],
+      "id": "efb78269-cd9c-4385-923e-bc3d79179e04",
+      "name": "Embeddings OpenAI"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2320,
+        2400
+      ],
+      "id": "3dc8e9e9-e8d1-41c4-a659-ff9389ad3d42",
+      "name": "OpenAI Chat Model3"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        360,
+        1100
+      ],
+      "id": "6c98190d-c9d2-4a80-9235-f80e6759a932",
+      "name": "Gmail Trigger"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.from.value[0].address }}",
+                    "rightValue": "notifications@calendly.com",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "270611ad-b3bc-496d-8b9e-90d99759d1b8"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Calendly"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e3a51c4c-3fb3-4af0-a7e6-29638bb71917",
+                    "leftValue": "={{ $json.from.value[0].address }}",
+                    "rightValue": "notifications@calendly.com",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Client/Lead?"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        500,
+        1100
+      ],
+      "id": "1101c862-764b-4f58-844d-45a159385677",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Email received: {{ $('Switch').item.json.text }}\nfrom: {{ $('Switch').item.json.from.value[0].address }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=##Role\n\nYou are a helpful lead assistant that update lead/client notes and also draft replies to emails\n\n##Task\n\nWhen a new email comes in i want you to first check the airtable base to see what is currently in the notes section and then update it by adding a summary of what the lead said in their email. if you do this then dont output anything as there is no need.\n\nI also want you to use your supplied supabase vector store knowledge base to try reply to the email. scan the knowledge base to see if your able to reply and if you are then give me a subject line and email body. you don't have to do this every time, only when you think its possible\n\nAt the end of every email only sign it by saying:\n\"Thanks, Quiver7\"\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        1060,
+        1280
+      ],
+      "id": "189dc715-ca0f-4651-8a8a-9f485c7d5ec9",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        940,
+        1540
+      ],
+      "id": "09c71c52-dd3b-40fb-bccc-729733a7cc0e",
+      "name": "OpenAI Chat Model4"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        700,
+        1200
+      ],
+      "id": "0964c007-7bd1-4ce8-a39b-63989ebbfa47",
+      "name": "OpenAI Chat Model5"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You will receive an email body for a new meeting reservation\n\nI want you to extract the data points which should be name, email, business name and how we can help them.\n\nPlease output these datapoints in json as separate variables. output just the variables no explanation of summary\n\nIgnore the organiser details it should only be the guest"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        700,
+        980
+      ],
+      "id": "a0d38968-d9e8-4e33-83e2-0f4cf91d6add",
+      "name": "Add lead to CRM1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        1160
+      ],
+      "id": "252924f5-5f45-4705-9e44-0006e2e667bf",
+      "name": "OpenAI Chat Model6"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Linkedin Summary: {{ $json.results[0].content }}\n",
+        "options": {
+          "systemMessage": "You will receive a linkedIn summary and a full website in markdown for a lead.\n\nYour job is to look at the data and create a summary of this lead and their company. Output just the summary please\n\nKeep it at 100 words max"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        1240,
+        980
+      ],
+      "id": "8cdb7b81-3a01-4e58-a685-e90e96ece9b2",
+      "name": "Lead summary Agent1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"{{ $('Add lead to CRM1').item.json.output.Name }}'s linkedin Profile URL'\",\n  \"topic\": \"general\",\n  \"search_depth\": \"basic\",\n  \"max_results\": 1,\n  \"time_range\": null,\n  \"days\": 3,\n  \"include_answer\": true,\n  \"include_raw_content\": false,\n  \"include_images\": false,\n  \"include_image_descriptions\": false,\n  \"include_domains\": [],\n  \"exclude_domains\": []\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        980
+      ],
+      "id": "70730d67-7900-40c9-8021-ce0a7f1c57a8",
+      "name": "Find Linkedin URL1"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "apprymkZe4PtQJRMq",
+          "mode": "list",
+          "cachedResultName": "Leads/Clients",
+          "cachedResultUrl": "https://airtable.com/apprymkZe4PtQJRMq"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblQOIU9F5du7iwis",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/apprymkZe4PtQJRMq/tblQOIU9F5du7iwis"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.1,
+      "position": [
+        1060,
+        1600
+      ],
+      "id": "1352c8cb-7a10-4440-81e4-c65e86c399ac",
+      "name": "Airtable4"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "apprymkZe4PtQJRMq",
+          "mode": "list",
+          "cachedResultName": "Leads/Clients",
+          "cachedResultUrl": "https://airtable.com/apprymkZe4PtQJRMq"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblQOIU9F5du7iwis",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/apprymkZe4PtQJRMq/tblQOIU9F5du7iwis"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Notes": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Notes', ``, 'string') }}",
+            "Email Address": "={{ $('Gmail Trigger').item.json.from.value[0].address }}"
+          },
+          "matchingColumns": [
+            "Email Address"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email Address",
+              "displayName": "Email Address",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Website URL",
+              "displayName": "Website URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Linkedin URL",
+              "displayName": "Linkedin URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead summary",
+              "displayName": "Lead summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Todo",
+                  "value": "Todo"
+                },
+                {
+                  "name": "In progress",
+                  "value": "In progress"
+                },
+                {
+                  "name": "Done",
+                  "value": "Done"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.1,
+      "position": [
+        1200,
+        1620
+      ],
+      "id": "849e542c-eb97-4419-8a50-5d6c7738c51d",
+      "name": "Airtable5"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"Name\": \"test tester\",\n    \"Email\": \"example@gmail.com\",\n    \"Business name\": \"example\",\n    \"how can we help you\": \"test\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        860,
+        1200
+      ],
+      "id": "51b60cd7-5dc2-417b-97dc-eb5980e16b4b",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"Email subject line\": \"example\",\n\t\"email body\": \"example\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1540,
+        1520
+      ],
+      "id": "94f7f99d-1abb-4ec8-9334-779040c52151",
+      "name": "Structured Output Parser3"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "agencyknowledgebase",
+        "toolDescription": "Retrieve information about the companies frequently asked questions and other details about the agency like their services, testimonials, and contact information.",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.1,
+      "position": [
+        1260,
+        1540
+      ],
+      "id": "820393f9-70dc-455a-b0ea-fa5445e4662d",
+      "name": "Supabase Vector Store1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        1660
+      ],
+      "id": "0acaa19b-9c8b-4c7d-ab29-920430c12845",
+      "name": "Embeddings OpenAI1"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "apprymkZe4PtQJRMq",
+          "mode": "list",
+          "cachedResultName": "Leads/Clients",
+          "cachedResultUrl": "https://airtable.com/apprymkZe4PtQJRMq"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblQOIU9F5du7iwis",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/apprymkZe4PtQJRMq/tblQOIU9F5du7iwis"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('Add lead to CRM1').item.json.output.Name }}",
+            "Email Address": "={{ $('Add lead to CRM1').item.json.output.Email }}",
+            "Linkedin URL": "={{ $('Find Linkedin URL1').item.json.results[0].url }}",
+            "Lead summary": "={{ $('Lead summary Agent1').item.json.output }}",
+            "Notes": "={{ $('Add lead to CRM1').item.json.output['how can we help you'] }}",
+            "Lead Status": "Meeting Scheduled"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email Address",
+              "displayName": "Email Address",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Website URL",
+              "displayName": "Website URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Lead Status",
+              "displayName": "Lead Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Meeting Scheduled",
+                  "value": "Meeting Scheduled"
+                },
+                {
+                  "name": "",
+                  "value": ""
+                },
+                {
+                  "name": "",
+                  "value": ""
+                },
+                {
+                  "name": "",
+                  "value": ""
+                },
+                {
+                  "name": "",
+                  "value": ""
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Linkedin URL",
+              "displayName": "Linkedin URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead summary",
+              "displayName": "Lead summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1580,
+        980
+      ],
+      "id": "d69564c1-ff40-44ca-9bff-10720d6c9cb5",
+      "name": "Airtable7"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "apprymkZe4PtQJRMq",
+          "mode": "list",
+          "cachedResultName": "Leads/Clients",
+          "cachedResultUrl": "https://airtable.com/apprymkZe4PtQJRMq"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblQOIU9F5du7iwis",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/apprymkZe4PtQJRMq/tblQOIU9F5du7iwis"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        660,
+        1340
+      ],
+      "id": "fbbdce3e-eb40-4f63-b03b-03434e2324a6",
+      "name": "Airtable3",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "64f8c225-a00a-4f1d-8604-7adebd2e1a45",
+              "leftValue": "={{ $json['Email Address'] }}",
+              "rightValue": "={{ $('Switch').item.json.from.value[0].address }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        1600
+      ],
+      "id": "bdcd4326-1589-4e2f-aedd-843c997751e9",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.output['Email subject line'] }}",
+        "message": "={{ $json.output['email body'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2700,
+        2060
+      ],
+      "id": "0cdff0e0-8a83-4417-82ad-cd8fc8dbd952",
+      "name": "Gmail5",
+      "webhookId": "633d89ed-a358-4bef-8708-5b9b641b669e"
+    },
+    {
+      "parameters": {
+        "chatId": "7713111664",
+        "text": "=You have an email from an exisitng client, they are interested in the following: {{ $('If').item.json.Notes }}\nClient summary: {{ $('If').item.json['Lead summary'] }}\nTheir email address is: {{ $('Gmail Trigger').item.json.from.value[0].address }}\nA draft has been made to respond to their email and their data has been updated in the crm.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1480,
+        1320
+      ],
+      "id": "39e87b2e-3280-4f2c-a55c-f82694a5affe",
+      "name": "summary4",
+      "webhookId": "c127c9b3-2de8-425b-8f4f-6478efe57145"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.output['Email subject line'] }}",
+        "message": "={{ $json.output['email body'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1480,
+        1160
+      ],
+      "id": "79b34a3b-fbf6-44cc-9a79-b80aa89bac02",
+      "name": "Gmail6",
+      "webhookId": "633d89ed-a358-4bef-8708-5b9b641b669e"
+    },
+    {
+      "parameters": {
+        "chatId": "7713111664",
+        "text": "=You have an email from a new lead, the lead is interested in the following: {{ $('Airtable').item.json.fields.Notes }}\nHere is a quick summary of the lead: {{ $('If').item.json['Lead summary'] }}\nTheir email address is: {{ $('Gmail Trigger').item.json.from.value[0].address }}\nThe lead has been added to the crm and a draft email has been composed to respond to them. The draft is in your inbox and waiting for your aprroval to send.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2720,
+        2220
+      ],
+      "id": "4bf15eb3-b2a1-4bb2-8da9-70372de325b5",
+      "name": "summary5",
+      "webhookId": "c127c9b3-2de8-425b-8f4f-6478efe57145"
+    },
+    {
+      "parameters": {
+        "chatId": "7713111664",
+        "text": "=You have a new calendly meeting scheduled with: {{ $json.fields.Name }}\n\nHere is some information about what the lead is interested in:\n{{ $json.fields.Notes }}\n\nHere is a quick summary of the lead:\n{{ $('Lead summary Agent1').item.json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1780,
+        980
+      ],
+      "id": "68ff4e98-dd3f-4c12-a64e-5bff386d0656",
+      "name": "new calendly sign up",
+      "webhookId": "c127c9b3-2de8-425b-8f4f-6478efe57145"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Classifier": {
+      "main": [
+        [
+          {
+            "node": "Finances",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Promotion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Leads/High Priority",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leads/High Priority": {
+      "main": [
+        [
+          {
+            "node": "Add lead to CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finances": {
+      "main": [
+        [
+          {
+            "node": "Summary1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary": {
+      "main": [
+        [
+          {
+            "node": "summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Promotion": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary1": {
+      "main": [
+        [
+          {
+            "node": "summary1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail1": {
+      "main": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Add lead to CRM",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add lead to CRM": {
+      "main": [
+        [
+          {
+            "node": "Find Linkedin URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Lead summary Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead summary Agent": {
+      "main": [
+        [
+          {
+            "node": "Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Linkedin URL": {
+      "main": [
+        [
+          {
+            "node": "Lead summary Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Add lead to CRM",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Gmail5",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "summary5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Add lead to CRM1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Gmail6",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "summary4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Add lead to CRM1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add lead to CRM1": {
+      "main": [
+        [
+          {
+            "node": "Find Linkedin URL1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model6": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Lead summary Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead summary Agent1": {
+      "main": [
+        [
+          {
+            "node": "Airtable7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Linkedin URL1": {
+      "main": [
+        [
+          {
+            "node": "Lead summary Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable4": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable5": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Add lead to CRM1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser3": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable3": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable7": {
+      "main": [
+        [
+          {
+            "node": "new calendly sign up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d0ad4cc7-9c0d-4136-b596-58d2e5475df7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4682ad397f343033a8e1099fe3b56ffb9ab4d256bc3d093ff3f8d83993405c6d"
+  },
+  "id": "doLlEDdu5ZseMJjv",
+  "tags": [
+    {
+      "createdAt": "2025-06-15T02:21:17.821Z",
+      "updatedAt": "2025-06-15T02:21:17.821Z",
+      "id": "Md7pJ23A7fq9wl5R",
+      "name": "d365 business central"
+    },
+    {
+      "createdAt": "2025-06-15T02:12:17.673Z",
+      "updatedAt": "2025-06-15T02:12:17.673Z",
+      "id": "c8WqdkwkbE4B6eNf",
+      "name": "SD - Sales"
+    },
+    {
+      "createdAt": "2025-06-15T02:21:17.827Z",
+      "updatedAt": "2025-06-15T02:21:17.827Z",
+      "id": "jsUsx1FwXuXdyL0Q",
+      "name": "shopify"
+    },
+    {
+      "createdAt": "2025-06-15T02:12:17.667Z",
+      "updatedAt": "2025-06-15T02:12:17.667Z",
+      "id": "ump6NJCHsQ3ynd8W",
+      "name": "Templates"
+    }
+  ]
+}
